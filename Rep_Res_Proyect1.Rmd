@@ -1,0 +1,96 @@
+---
+title: "Reproducibe Research Proyect 1"
+author: "Abner Aranda"
+date: "8/9/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Loading and preparing data
+```{r}
+if (!file.exists("activity.csv") )
+    {
+     dlurl <- 'http://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip'  
+     download.file(dlurl,destfile='repdata%2Fdata%2Factivity.zip',mode='wb')  
+     unzip('repdata%2Fdata%2Factivity.zip')
+    }
+activity <- read.csv("activity.csv")
+```
+
+What is the mean total number of steps taken per day?
+We start by creating a histogram of steps per day
+```{r}
+Act_without_na <- subset(activity, !is.na(activity$steps))
+step_per_day <- aggregate(steps ~ date, Act_without_na, sum)
+hist(step_per_day $steps, breaks = 53, col = "green", xlab = "Number of steps", main = "Histogram of the total number of steps taken each day")
+```
+Calculate mean and median of the total number of steps taken per day
+Mean
+```{r}
+act_mean <- mean(step_per_day$steps)
+print(act_mean)
+```
+Median
+```{r}
+act_med <- median(step_per_day$steps)
+print(act_med)
+```
+
+What is the average daily activity pattern?
+Plot of steps per interval
+```{r}
+steps_per_interval <- aggregate(steps ~ interval, Act_without_na, mean)
+plot(steps_per_interval$interval, steps_per_interval$steps, type="l", xlab="Interval", ylab="Number of Steps", main="Average Number of Steps per Day by Interval")
+```
+Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r}
+max_int <- steps_per_interval[which.max(steps_per_interval$steps),1]
+print(max_int)
+
+```
+How many steps does that interval had?
+```{r}
+max_int_numb <- steps_per_interval[steps_per_interval$interval == max_int,2]
+print(max_int_numb)
+```
+
+Imputing missing values
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
+```{r}
+sum_NA <- sum(!complete.cases(activity))
+sum_NA
+```
+Create a new dataset that is equal to the original dataset but with the missing data filled in. Create a histogram
+```{r}
+na_index <- which(is.na(as.character(activity$steps)))
+complete_act <- activity
+complete_act[na_index, ]$steps <- unlist(lapply(na_index, FUN=function(na_index){steps_per_interval[activity[na_index, ]$interval== steps_per_interval$interval, ]$steps}))
+step_per_day_complete <- aggregate(steps ~ date, data = complete_act, sum)
+hist(step_per_day_complete $steps, breaks = 53, col = "green", xlab = "Number of steps", main = "Histogram of the total number of steps taken each day")
+```
+Mean
+```{r}
+mean(step_per_day_complete$steps)
+```
+Median
+```{r}
+median(step_per_day_complete$steps)
+```
+Both mean and median has little to no changecompared with the incomplete data
+
+Are there differences in activity patterns between weekdays and weekends?
+Lets separate the data between weekend and weekdays
+```{r}
+complete_act$date <- as.Date(complete_act$date, format = "%Y-%m-%d")
+weekdays <- c("Monday","Tuesday","Wednesday","Thursday","Friday")
+complete_act $day_week = as.factor(ifelse(is.element(weekdays(as.Date(complete_act $date)),weekdays), "Weekday", "Weekend"))
+steps_by_day_type <- aggregate(steps ~ interval + day_week, complete_act, mean)
+library(lattice)
+xyplot(steps_by_day_type$steps ~ steps_by_day_type$interval| steps_by_day_type$day_week, main="Average Steps per Day by Interval",xlab="Interval", ylab="Steps",layout=c(1,2), type="l")
+```
+The weekends do have more activity, although weekdays have the biggest peak of activity, pressumible during the morning
